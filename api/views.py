@@ -267,17 +267,40 @@ class GameStatusAPIView(APIView):
     def get(self, request, game_id):
         game = get_object_or_404(Game, id=game_id)
 
-        # Optional: Only allow game participants to see status
+        # فقط بازیکن‌های داخل بازی دسترسی دارند
         if request.user != game.player1 and (game.player2 and request.user != game.player2):
             return Response({'error': 'You are not part of this game'}, status=403)
+
+        # محاسبه برنده اگر بازی تمام شده باشد
+        winner = None
+        if game.status == 'finished':
+            if game.player1_score > game.player2_score:
+                winner = game.player1.username
+            elif game.player2_score > game.player1_score:
+                winner = game.player2.username
+            # else: مساوی
 
         data = {
             'game_id': game.id,
             'status': game.status,
             'player1': game.player1.username if game.player1 else None,
-            'player2': game.player2.username if game.player2 else None
+            'player2': game.player2.username if game.player2 else None,
+            'turn': game.turn.username if game.turn else None,
+            'masked_word': game.masked_word,
+            'your_score': self.get_player_score(request.user, game),
+            'player1_score': game.player1_score,
+            'player2_score': game.player2_score,
+            'winner': winner
         }
         return Response(data, status=200)
+
+    def get_player_score(self, user, game):
+        if user == game.player1:
+            return game.player1_score
+        elif user == game.player2:
+            return game.player2_score
+        return 0
+
 
 
 
